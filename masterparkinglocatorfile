@@ -1,0 +1,1104 @@
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.*;
+import java.util.stream.Collectors;
+
+// Enum for parking spot types
+enum SpotType {
+    COMPACT, REGULAR, LARGE, HANDICAPPED, ELECTRIC
+}
+
+// Enum for parking spot status
+enum SpotStatus {
+    AVAILABLE, OCCUPIED, RESERVED, OUT_OF_ORDER
+}
+// Location class to represent coordinates
+class Location {
+    private double latitude;
+    private double longitude;
+    private String address;
+
+    public Location(double latitude, double longitude, String address) {
+        this.latitude = latitude;
+        this.longitude = longitude;
+        this.address = address;
+    }
+
+    // Calculate distance between two locations using Haversine formula
+    public double distanceTo(Location other) {
+        final int R = 6371; // Radius of Earth in kilometers
+        double latDistance = Math.toRadians(other.latitude - this.latitude);
+        double lonDistance = Math.toRadians(other.longitude - this.longitude);
+        double a = Math.sin(latDistance / 2) * Math.sin(latDistance / 2)
+                + Math.cos(Math.toRadians(this.latitude)) * Math.cos(Math.toRadians(other.latitude))
+                * Math.sin(lonDistance / 2) * Math.sin(lonDistance / 2);
+        double c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        return R * c;
+    }
+  // Getters
+    public double getLatitude() { return latitude; }
+    public double getLongitude() { return longitude; }
+    public String getAddress() { return address; }
+
+    @Override
+    public String toString() {
+        return String.format("Location{lat=%.4f, lon=%.4f, address='%s'}", 
+                           latitude, longitude, address);
+    }
+}
+
+
+
+// Parking Spot class
+class ParkingSpot {
+    private String spotId;
+    private SpotType type;
+    private SpotStatus status;
+    private double hourlyRate;
+    private boolean hasElectricCharging;
+    private String reservedBy;
+    private LocalDateTime reservationTime;
+
+    public ParkingSpot(String spotId, SpotType type, double hourlyRate) {
+        this.spotId = spotId;
+        this.type = type;
+        this.hourlyRate = hourlyRate;
+        this.status = SpotStatus.AVAILABLE;
+        this.hasElectricCharging = (type == SpotType.ELECTRIC);
+    }
+
+    public boolean reserve(String userId) {
+        if (status == SpotStatus.AVAILABLE) {
+            status = SpotStatus.RESERVED;
+            reservedBy = userId;
+            reservationTime = LocalDateTime.now();
+            return true;
+        }
+        return false;
+    }
+
+    public boolean occupy() {
+        if (status == SpotStatus.AVAILABLE || status == SpotStatus.RESERVED) {
+            status = SpotStatus.OCCUPIED;
+            return true;
+        }
+        return false;
+    }
+
+    public void vacate() {
+        status = SpotStatus.AVAILABLE;
+        reservedBy = null;
+        reservationTime = null;
+    }
+
+    public void setOutOfOrder() {
+        status = SpotStatus.OUT_OF_ORDER;
+    }
+
+    // Getters
+    public String getSpotId() { return spotId; }
+    public SpotType getType() { return type; }
+    public SpotStatus getStatus() { return status; }
+    public double getHourlyRate() { return hourlyRate; }
+    public boolean hasElectricCharging() { return hasElectricCharging; }
+    public String getReservedBy() { return reservedBy; }
+    public LocalDateTime getReservationTime() { return reservationTime; }
+
+    @Override
+    public String toString() {
+        return String.format("Spot{id='%s', type=%s, status=%s, rate=₹%.2f/hr%s}", 
+                           spotId, type, status, hourlyRate,
+                           hasElectricCharging ? ", Electric" : "");
+    }
+}
+
+
+/ Parking Spot class
+class ParkingSpot {
+    private String spotId;
+    private SpotType type;
+    private SpotStatus status;
+    private double hourlyRate;
+    private boolean hasElectricCharging;
+    private String reservedBy;
+    private LocalDateTime reservationTime;
+
+    public ParkingSpot(String spotId, SpotType type, double hourlyRate) {
+        this.spotId = spotId;
+        this.type = type;
+        this.hourlyRate = hourlyRate;
+        this.status = SpotStatus.AVAILABLE;
+        this.hasElectricCharging = (type == SpotType.ELECTRIC);
+    }
+
+    public boolean reserve(String userId) {
+        if (status == SpotStatus.AVAILABLE) {
+            status = SpotStatus.RESERVED;
+            reservedBy = userId;
+            reservationTime = LocalDateTime.now();
+            return true;
+        }
+        return false;
+    }
+
+    public boolean occupy() {
+        if (status == SpotStatus.AVAILABLE || status == SpotStatus.RESERVED) {
+            status = SpotStatus.OCCUPIED;
+            return true;
+        }
+        return false;
+    }
+
+    public void vacate() {
+        status = SpotStatus.AVAILABLE;
+        reservedBy = null;
+        reservationTime = null;
+    }
+
+    public void setOutOfOrder() {
+        status = SpotStatus.OUT_OF_ORDER;
+    }
+
+    // Getters
+    public String getSpotId() { return spotId; }
+    public SpotType getType() { return type; }
+    public SpotStatus getStatus() { return status; }
+    public double getHourlyRate() { return hourlyRate; }
+    public boolean hasElectricCharging() { return hasElectricCharging; }
+    public String getReservedBy() { return reservedBy; }
+    public LocalDateTime getReservationTime() { return reservationTime; }
+
+    @Override
+    public String toString() {
+        return String.format("Spot{id='%s', type=%s, status=%s, rate=₹%.2f/hr%s}", 
+                           spotId, type, status, hourlyRate,
+                           hasElectricCharging ? ", Electric" : "");
+    }
+}
+
+// Parking Lot class
+class ParkingLot {
+    private String lotId;
+    private String name;
+    private Location location;
+    private List<ParkingSpot> spots;
+    private Map<SpotType, Integer> capacity;
+    private boolean isOpen24Hours;
+    private String openingHours;
+    private double rating;
+    private List<String> amenities;
+
+    public ParkingLot(String lotId, String name, Location location) {
+        this.lotId = lotId;
+        this.name = name;
+        this.location = location;
+        this.spots = new ArrayList<>();
+        this.capacity = new HashMap<>();
+        this.isOpen24Hours = false;
+        this.openingHours = "6:00 AM - 10:00 PM";
+        this.rating = 4.0;
+        this.amenities = new ArrayList<>();
+        initializeCapacity();
+    }
+
+    private void initializeCapacity() {
+        for (SpotType type : SpotType.values()) {
+            capacity.put(type, 0);
+        }
+    }
+
+    public void addSpot(ParkingSpot spot) {
+        spots.add(spot);
+        capacity.put(spot.getType(), capacity.get(spot.getType()) + 1);
+    }
+
+    public List<ParkingSpot> getAvailableSpots() {
+        return spots.stream()
+                   .filter(spot -> spot.getStatus() == SpotStatus.AVAILABLE)
+                   .collect(Collectors.toList());
+    }
+
+    public List<ParkingSpot> getAvailableSpotsByType(SpotType type) {
+        return spots.stream()
+                   .filter(spot -> spot.getType() == type && 
+                          spot.getStatus() == SpotStatus.AVAILABLE)
+                   .collect(Collectors.toList());
+    }
+
+    public int getAvailableCount() {
+        return (int) spots.stream()
+                         .filter(spot -> spot.getStatus() == SpotStatus.AVAILABLE)
+                         .count();
+    }
+
+    public int getAvailableCountByType(SpotType type) {
+        return (int) spots.stream()
+                         .filter(spot -> spot.getType() == type && 
+                                spot.getStatus() == SpotStatus.AVAILABLE)
+                         .count();
+    }
+
+    public double getOccupancyRate() {
+        long occupied = spots.stream()
+                            .filter(spot -> spot.getStatus() == SpotStatus.OCCUPIED || 
+                                          spot.getStatus() == SpotStatus.RESERVED)
+                            .count();
+        return spots.isEmpty() ? 0 : (double) occupied / spots.size() * 100;
+    }
+
+    public ParkingSpot findSpotById(String spotId) {
+        return spots.stream()
+                   .filter(spot -> spot.getSpotId().equals(spotId))
+                   .findFirst()
+                   .orElse(null);
+    }
+
+    // Getters and Setters
+    public String getLotId() { return lotId; }
+    public String getName() { return name; }
+    public Location getLocation() { return location; }
+    public List<ParkingSpot> getSpots() { return spots; }
+    public boolean isOpen24Hours() { return isOpen24Hours; }
+    public void setOpen24Hours(boolean open24Hours) { this.isOpen24Hours = open24Hours; }
+    public String getOpeningHours() { return openingHours; }
+    public void setOpeningHours(String openingHours) { this.openingHours = openingHours; }
+    public double getRating() { return rating; }
+    public void setRating(double rating) { this.rating = rating; }
+    public List<String> getAmenities() { return amenities; }
+    public void addAmenity(String amenity) { this.amenities.add(amenity); }
+
+    @Override
+    public String toString() {
+        return String.format("ParkingLot{id='%s', name='%s', available=%d/%d, occupancy=%.1f%%, rating=%.1f}", 
+                           lotId, name, getAvailableCount(), spots.size(), 
+                           getOccupancyRate(), rating);
+    }
+}
+
+// User class
+class User {
+    private String userId;
+    private String name;
+    private String email;
+    private String phoneNumber;
+    private String vehicleNumber;
+    private SpotType preferredSpotType;
+    private List<String> reservationHistory;
+
+    public User(String userId, String name, String email, String phoneNumber, String vehicleNumber) {
+        this.userId = userId;
+        this.name = name;
+        this.email = email;
+        this.phoneNumber = phoneNumber;
+        this.vehicleNumber = vehicleNumber;
+        this.preferredSpotType = SpotType.REGULAR;
+        this.reservationHistory = new ArrayList<>();
+    }
+
+    // Getters and Setters
+    public String getUserId() { return userId; }
+    public String getName() { return name; }
+    public String getEmail() { return email; }
+    public String getPhoneNumber() { return phoneNumber; }
+    public String getVehicleNumber() { return vehicleNumber; }
+    public SpotType getPreferredSpotType() { return preferredSpotType; }
+    public void setPreferredSpotType(SpotType preferredSpotType) { 
+        this.preferredSpotType = preferredSpotType; 
+    }
+    public List<String> getReservationHistory() { return reservationHistory; }
+    public void addToHistory(String reservation) { this.reservationHistory.add(reservation); }
+
+    @Override
+    public String toString() {
+        return String.format("User{id='%s', name='%s', vehicle='%s', preferred=%s}", 
+                           userId, name, vehicleNumber, preferredSpotType);
+    }
+}
+
+// Reservation class
+class Reservation {
+    private String reservationId;
+    private String userId;
+    private String lotId;
+    private String spotId;
+    private LocalDateTime reservationTime;
+    private LocalDateTime expiryTime;
+    private boolean isActive;
+    private double estimatedCost;
+
+    public Reservation(String userId, String lotId, String spotId) {
+        this.reservationId = "RES-" + System.currentTimeMillis();
+        this.userId = userId;
+        this.lotId = lotId;
+        this.spotId = spotId;
+        this.reservationTime = LocalDateTime.now();
+        this.expiryTime = reservationTime.plusMinutes(30); // 30 minute reservation window
+        this.isActive = true;
+    }
+
+    public boolean isExpired() {
+        return LocalDateTime.now().isAfter(expiryTime);
+    }
+
+    public void cancel() {
+        this.isActive = false;
+    }
+
+    // Getters
+    public String getReservationId() { return reservationId; }
+    public String getUserId() { return userId; }
+    public String getLotId() { return lotId; }
+    public String getSpotId() { return spotId; }
+    public LocalDateTime getReservationTime() { return reservationTime; }
+    public LocalDateTime getExpiryTime() { return expiryTime; }
+    public boolean isActive() { return isActive; }
+    public double getEstimatedCost() { return estimatedCost; }
+    public void setEstimatedCost(double estimatedCost) { this.estimatedCost = estimatedCost; }
+
+    @Override
+    public String toString() {
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
+        return String.format("Reservation{id='%s', spot='%s', expires=%s, active=%s}", 
+                           reservationId, spotId, expiryTime.format(formatter), isActive);
+    }
+}
+
+// Search Filter class
+class SearchFilter {
+    private SpotType spotType;
+    private double maxDistance;
+    private double maxHourlyRate;
+    private boolean needsElectricCharging;
+    private boolean only24Hours;
+    private double minRating;
+
+    public SearchFilter() {
+        this.maxDistance = 5.0; // 5 km default
+        this.maxHourlyRate = Double.MAX_VALUE;
+        this.needsElectricCharging = false;
+        this.only24Hours = false;
+        this.minRating = 0.0;
+    }
+
+    // Getters and Setters
+    public SpotType getSpotType() { return spotType; }
+    public void setSpotType(SpotType spotType) { this.spotType = spotType; }
+    public double getMaxDistance() { return maxDistance; }
+    public void setMaxDistance(double maxDistance) { this.maxDistance = maxDistance; }
+    public double getMaxHourlyRate() { return maxHourlyRate; }
+    public void setMaxHourlyRate(double maxHourlyRate) { this.maxHourlyRate = maxHourlyRate; }
+    public boolean needsElectricCharging() { return needsElectricCharging; }
+    public void setNeedsElectricCharging(boolean needsElectricCharging) { 
+        this.needsElectricCharging = needsElectricCharging; 
+    }
+    public boolean isOnly24Hours() { return only24Hours; }
+    public void setOnly24Hours(boolean only24Hours) { this.only24Hours = only24Hours; }
+    public double getMinRating() { return minRating; }
+    public void setMinRating(double minRating) { this.minRating = minRating; }
+}
+
+// Main Parking Locator System
+public class ParkingLocatorSystem {
+    private Map<String, ParkingLot> parkingLots;
+    private Map<String, User> users;
+    private Map<String, Reservation> reservations;
+    private Scanner scanner;
+
+    public ParkingLocatorSystem() {
+        this.parkingLots = new HashMap<>();
+        this.users = new HashMap<>();
+        this.reservations = new HashMap<>();
+        this.scanner = new Scanner(System.in);
+        initializeSampleData();
+    }
+
+    private void initializeSampleData() {
+        // Create sample parking lots
+        ParkingLot lot1 = new ParkingLot("LOT001", "City Center Mall", 
+                                        new Location(12.9716, 77.5946, "MG Road, Bangalore"));
+        lot1.setOpen24Hours(false);
+        lot1.setOpeningHours("6:00 AM - 11:00 PM");
+        lot1.setRating(4.2);
+        lot1.addAmenity("Security");
+        lot1.addAmenity("CCTV");
+        lot1.addAmenity("Restrooms");
+
+        // Add spots to lot1
+        for (int i = 1; i <= 20; i++) {
+            SpotType type = (i <= 5) ? SpotType.COMPACT : 
+                           (i <= 15) ? SpotType.REGULAR : 
+                           (i <= 18) ? SpotType.LARGE : SpotType.HANDICAPPED;
+            double rate = (type == SpotType.COMPACT) ? 30.0 : 
+                         (type == SpotType.REGULAR) ? 40.0 : 
+                         (type == SpotType.LARGE) ? 50.0 : 25.0;
+            lot1.addSpot(new ParkingSpot("LOT001-" + String.format("%02d", i), type, rate));
+        }
+
+        ParkingLot lot2 = new ParkingLot("LOT002", "Tech Park Plaza", 
+                                        new Location(12.9352, 77.6245, "Electronic City, Bangalore"));
+        lot2.setOpen24Hours(true);
+        lot2.setRating(4.5);
+        lot2.addAmenity("Electric Charging");
+        lot2.addAmenity("Covered Parking");
+        lot2.addAmenity("Valet Service");
+
+        // Add spots to lot2 (including electric charging spots)
+        for (int i = 1; i <= 25; i++) {
+            SpotType type = (i <= 3) ? SpotType.ELECTRIC :
+                           (i <= 8) ? SpotType.COMPACT : 
+                           (i <= 20) ? SpotType.REGULAR : SpotType.LARGE;
+            double rate = (type == SpotType.ELECTRIC) ? 60.0 :
+                         (type == SpotType.COMPACT) ? 35.0 : 
+                         (type == SpotType.REGULAR) ? 45.0 : 55.0;
+            lot2.addSpot(new ParkingSpot("LOT002-" + String.format("%02d", i), type, rate));
+        }
+
+        ParkingLot lot3 = new ParkingLot("LOT003", "Airport Parking", 
+                                        new Location(13.1986, 77.7066, "Kempegowda International Airport"));
+        lot3.setOpen24Hours(true);
+        lot3.setRating(4.0);
+        lot3.addAmenity("24/7 Security");
+        lot3.addAmenity("Shuttle Service");
+        lot3.addAmenity("Long-term Parking");
+
+        // Add spots to lot3
+        for (int i = 1; i <= 50; i++) {
+            SpotType type = (i <= 10) ? SpotType.COMPACT : 
+                           (i <= 35) ? SpotType.REGULAR : 
+                           (i <= 45) ? SpotType.LARGE : SpotType.HANDICAPPED;
+            double rate = (type == SpotType.COMPACT) ? 25.0 : 
+                         (type == SpotType.REGULAR) ? 35.0 : 
+                         (type == SpotType.LARGE) ? 45.0 : 20.0;
+            lot3.addSpot(new ParkingSpot("LOT003-" + String.format("%02d", i), type, rate));
+        }
+
+        // Add lots to system
+        parkingLots.put(lot1.getLotId(), lot1);
+        parkingLots.put(lot2.getLotId(), lot2);
+        parkingLots.put(lot3.getLotId(), lot3);
+
+        // Create sample users
+        User user1 = new User("USER001", "John Doe", "john@email.com", "9876543210", "KA01AB1234");
+        user1.setPreferredSpotType(SpotType.REGULAR);
+        users.put(user1.getUserId(), user1);
+
+        User user2 = new User("USER002", "Jane Smith", "jane@email.com", "9876543211", "KA02CD5678");
+        user2.setPreferredSpotType(SpotType.ELECTRIC);
+        users.put(user2.getUserId(), user2);
+
+        // Simulate some occupied spots
+        lot1.findSpotById("LOT001-01").occupy();
+        lot1.findSpotById("LOT001-05").occupy();
+        lot2.findSpotById("LOT002-01").reserve("USER001");
+        lot3.findSpotById("LOT003-10").setOutOfOrder();
+    }
+
+    public List<ParkingLot> searchParkingLots(Location userLocation, SearchFilter filter) {
+        List<ParkingLot> results = new ArrayList<>();
+
+        for (ParkingLot lot : parkingLots.values()) {
+            double distance = userLocation.distanceTo(lot.getLocation());
+            
+            // Apply filters
+            if (distance > filter.getMaxDistance()) continue;
+            if (lot.getRating() < filter.getMinRating()) continue;
+            if (filter.isOnly24Hours() && !lot.isOpen24Hours()) continue;
+            
+            // Check if lot has available spots of required type
+            if (filter.getSpotType() != null) {
+                List<ParkingSpot> availableSpots = lot.getAvailableSpotsByType(filter.getSpotType());
+                if (availableSpots.isEmpty()) continue;
+                
+                // Check rate filter
+                boolean hasAffordableSpot = availableSpots.stream()
+                    .anyMatch(spot -> spot.getHourlyRate() <= filter.getMaxHourlyRate());
+                if (!hasAffordableSpot) continue;
+                
+                // Check electric charging requirement
+                if (filter.needsElectricCharging()) {
+                    boolean hasElectricSpot = availableSpots.stream()
+                        .anyMatch(spot -> spot.hasElectricCharging());
+                    if (!hasElectricSpot) continue;
+                }
+            }
+            
+            results.add(lot);
+        }
+
+        // Sort by distance
+        results.sort((a, b) -> Double.compare(
+            userLocation.distanceTo(a.getLocation()),
+            userLocation.distanceTo(b.getLocation())
+        ));
+
+        return results;
+    }
+
+    public Reservation makeReservation(String userId, String lotId, String spotId) {
+        User user = users.get(userId);
+        ParkingLot lot = parkingLots.get(lotId);
+        
+        if (user == null || lot == null) {
+            System.out.println("Invalid user or parking lot!");
+            return null;
+        }
+
+        ParkingSpot spot = lot.findSpotById(spotId);
+        if (spot == null) {
+            System.out.println("Parking spot not found!");
+            return null;
+        }
+
+        if (spot.reserve(userId)) {
+            Reservation reservation = new Reservation(userId, lotId, spotId);
+            reservation.setEstimatedCost(spot.getHourlyRate() * 2); // Assume 2 hours
+            reservations.put(reservation.getReservationId(), reservation);
+            
+            user.addToHistory(reservation.getReservationId());
+            System.out.println("Reservation successful! Reservation ID: " + reservation.getReservationId());
+            return reservation;
+        } else {
+            System.out.println("Unable to reserve spot. It may be occupied or out of order.");
+            return null;
+        }
+    }
+
+    public boolean cancelReservation(String reservationId) {
+        Reservation reservation = reservations.get(reservationId);
+        if (reservation == null || !reservation.isActive()) {
+            System.out.println("Reservation not found or already inactive!");
+            return false;
+        }
+
+        // Free up the spot
+        ParkingLot lot = parkingLots.get(reservation.getLotId());
+        ParkingSpot spot = lot.findSpotById(reservation.getSpotId());
+        spot.vacate();
+        
+        // Cancel reservation
+        reservation.cancel();
+        System.out.println("Reservation cancelled successfully!");
+        return true;
+    }
+
+    public void displayParkingLotDetails(String lotId) {
+        ParkingLot lot = parkingLots.get(lotId);
+        if (lot == null) {
+            System.out.println("Parking lot not found!");
+            return;
+        }
+
+        System.out.println("\n" + "=".repeat(50));
+        System.out.println("PARKING LOT DETAILS");
+        System.out.println("=".repeat(50));
+        System.out.println("Name: " + lot.getName());
+        System.out.println("Location: " + lot.getLocation().getAddress());
+        System.out.println("Hours: " + (lot.isOpen24Hours() ? "24/7" : lot.getOpeningHours()));
+        System.out.println("Rating: " + lot.getRating() + "/5.0");
+        System.out.println("Total Spots: " + lot.getSpots().size());
+        System.out.println("Available: " + lot.getAvailableCount());
+        System.out.printf("Occupancy: %.1f%%\n", lot.getOccupancyRate());
+        
+        if (!lot.getAmenities().isEmpty()) {
+            System.out.println("Amenities: " + String.join(", ", lot.getAmenities()));
+        }
+
+        System.out.println("\nAvailability by Type:");
+        for (SpotType type : SpotType.values()) {
+            int available = lot.getAvailableCountByType(type);
+            if (available > 0) {
+                List<ParkingSpot> spots = lot.getAvailableSpotsByType(type);
+                double minRate = spots.stream().mapToDouble(ParkingSpot::getHourlyRate).min().orElse(0);
+                System.out.printf("  %s: %d spots available (from ₹%.0f/hr)\n", 
+                                type, available, minRate);
+            }
+        }
+    }
+
+    public void runInteractiveSystem() {
+        System.out.println("🚗 WELCOME TO PARKING LOCATOR SYSTEM 🚗");
+        System.out.println("=====================================");
+
+        while (true) {
+            System.out.println("\n📍 MAIN MENU:");
+            System.out.println("1. Search Parking Near Me");
+            System.out.println("2. View Parking Lot Details");
+            System.out.println("3. Make Reservation");
+            System.out.println("4. Cancel Reservation");
+            System.out.println("5. View All Parking Lots");
+            System.out.println("6. Register New User");
+            System.out.println("7. View User Profile");
+            System.out.println("8. Exit");
+            System.out.print("\nSelect option (1-8): ");
+
+            int choice = scanner.nextInt();
+            scanner.nextLine(); // Consume newline
+
+            switch (choice) {
+                case 1:
+                    searchNearbyParking();
+                    break;
+                case 2:
+                    viewParkingLotDetails();
+                    break;
+                case 3:
+                    makeReservationInteractive();
+                    break;
+                case 4:
+                    cancelReservationInteractive();
+                    break;
+                case 5:
+                    viewAllParkingLots();
+                    break;
+                case 6:
+                    registerNewUser();
+                    break;
+                case 7:
+                    viewUserProfile();
+                    break;
+                case 8:
+                    System.out.println("Thank you for using Parking Locator System! 👋");
+                    return;
+                default:
+                    System.out.println("Invalid option! Please try again.");
+            }
+        }
+    }
+
+    private void searchNearbyParking() {
+        System.out.println("\n🔍 SEARCH PARKING NEAR YOU");
+        System.out.println("===========================");
+        
+        System.out.print("Enter your latitude: ");
+        double lat = scanner.nextDouble();
+        System.out.print("Enter your longitude: ");
+        double lon = scanner.nextDouble();
+        scanner.nextLine(); // Consume newline
+        System.out.print("Enter your current location: ");
+        String address = scanner.nextLine();
+        
+        Location userLocation = new Location(lat, lon, address);
+        SearchFilter filter = new SearchFilter();
+        
+        System.out.print("Maximum distance (km) [default 5]: ");
+        String distInput = scanner.nextLine();
+        if (!distInput.isEmpty()) {
+            filter.setMaxDistance(Double.parseDouble(distInput));
+        }
+        
+        System.out.print("Preferred spot type (COMPACT/REGULAR/LARGE/HANDICAPPED/ELECTRIC) [any]: ");
+        String typeInput = scanner.nextLine();
+        if (!typeInput.isEmpty()) {
+            try {
+                filter.setSpotType(SpotType.valueOf(typeInput.toUpperCase()));
+            } catch (IllegalArgumentException e) {
+                System.out.println("Invalid spot type, searching for any type...");
+            }
+        }
+        
+        System.out.print("Maximum hourly rate (₹) [any]: ");
+        String rateInput = scanner.nextLine();
+        if (!rateInput.isEmpty()) {
+            filter.setMaxHourlyRate(Double.parseDouble(rateInput));
+        }
+        
+        List<ParkingLot> results = searchParkingLots(userLocation, filter);
+        
+        if (results.isEmpty()) {
+            System.out.println("No parking lots found matching your criteria.");
+            return;
+        }
+        
+        System.out.println("\n📋 SEARCH RESULTS:");
+        System.out.println("==================");
+        
+        for (int i = 0; i < results.size(); i++) {
+            ParkingLot lot = results.get(i);
+            double distance = userLocation.distanceTo(lot.getLocation());
+            System.out.printf("%d. %s\n", i + 1, lot.getName());
+            System.out.printf("   Distance: %.2f km\n", distance);
+            System.out.printf("   Available: %d spots\n", lot.getAvailableCount());
+            System.out.printf("   Rating: %.1f/5.0\n", lot.getRating());
+            
+            if (filter.getSpotType() != null) {
+                List<ParkingSpot> spots = lot.getAvailableSpotsByType(filter.getSpotType());
+                if (!spots.isEmpty()) {
+                    double minRate = spots.stream().mapToDouble(ParkingSpot::getHourlyRate).min().orElse(0);
+                    System.out.printf("   %s spots: %d available (from ₹%.0f/hr)\n", 
+                                    filter.getSpotType(), spots.size(), minRate);
+                }
+            }
+            System.out.println();
+        }
+    }
+
+    private void viewParkingLotDetails() {
+        System.out.println("\n📊 VIEW PARKING LOT DETAILS");
+        System.out.println("============================");
+        
+        System.out.println("Available Parking Lots:");
+        int i = 1;
+        List<String> lotIds = new ArrayList<>();
+        for (ParkingLot lot : parkingLots.values()) {
+            System.out.printf("%d. %s (%s)\n", i++, lot.getName(), lot.getLotId());
+            lotIds.add(lot.getLotId());
+        }
+        
+        System.out.print("Select lot number: ");
+        int choice = scanner.nextInt();
+        scanner.nextLine();
+        
+        if (choice >= 1 && choice <= lotIds.size()) {
+            displayParkingLotDetails(lotIds.get(choice - 1));
+        } else {
+            System.out.println("Invalid selection!");
+        }
+    }
+
+    private void makeReservationInteractive() {
+        System.out.println("\n🎫 MAKE RESERVATION");
+        System.out.println("===================");
+        
+        System.out.print("Enter User ID: ");
+        String userId = scanner.nextLine();
+        
+        if (!users.containsKey(userId)) {
+            System.out.println("User not found! Please register first.");
+            return;
+        }
+        
+        System.out.println("Available Parking Lots:");
+        int i = 1;
+        List<String> lotIds = new ArrayList<>();
+        for (ParkingLot lot : parkingLots.values()) {
+            if (lot.getAvailableCount() > 0) {
+                System.out.printf("%d. %s - %d spots available\n", 
+                                i++, lot.getName(), lot.getAvailableCount());
+                lotIds.add(lot.getLotId());
+            }
+        }
+        
+        if (lotIds.isEmpty()) {
+            System.out.println("No parking lots with available spots!");
+            return;
+        }
+        
+        System.out.print("Select lot number: ");
+        int lotChoice = scanner.nextInt();
+        scanner.nextLine();
+        
+        if (lotChoice < 1 || lotChoice > lotIds.size()) {
+            System.out.println("Invalid selection!");
+            return;
+        }
+        
+        String selectedLotId = lotIds.get(lotChoice - 1);
+        ParkingLot selectedLot = parkingLots.get(selectedLotId);
+        
+        System.out.println("\nAvailable spots in " + selectedLot.getName() + ":");
+        List<ParkingSpot> availableSpots = selectedLot.getAvailableSpots();
+        
+        for (int j = 0; j < availableSpots.size(); j++) {
+            ParkingSpot spot = availableSpots.get(j);
+            System.out.printf("%d. %s - %s (₹%.2f/hr)%s\n", 
+                            j + 1, spot.getSpotId(), spot.getType(), 
+                            spot.getHourlyRate(),
+                            spot.hasElectricCharging() ? " [Electric Charging]" : "");
+        }
+        
+        System.out.print("Select spot number: ");
+        int spotChoice = scanner.nextInt();
+        scanner.nextLine();
+        
+        if (spotChoice >= 1 && spotChoice <= availableSpots.size()) {
+            ParkingSpot selectedSpot = availableSpots.get(spotChoice - 1);
+            Reservation reservation = makeReservation(userId, selectedLotId, selectedSpot.getSpotId());
+            
+            if (reservation != null) {
+                System.out.println("\n✅ RESERVATION CONFIRMED!");
+                System.out.println("========================");
+                System.out.println("Reservation ID: " + reservation.getReservationId());
+                System.out.println("Parking Lot: " + selectedLot.getName());
+                System.out.println("Spot: " + selectedSpot.getSpotId());
+                System.out.println("Type: " + selectedSpot.getType());
+                System.out.println("Rate: ₹" + selectedSpot.getHourlyRate() + "/hr");
+                System.out.println("Estimated Cost (2 hrs): ₹" + reservation.getEstimatedCost());
+                System.out.println("Valid until: " + reservation.getExpiryTime());
+                System.out.println("\n⚠️  Please arrive within 30 minutes to secure your spot!");
+            }
+        } else {
+            System.out.println("Invalid spot selection!");
+        }
+    }
+
+    private void cancelReservationInteractive() {
+        System.out.println("\n❌ CANCEL RESERVATION");
+        System.out.println("=====================");
+        
+        System.out.print("Enter Reservation ID: ");
+        String reservationId = scanner.nextLine();
+        
+        cancelReservation(reservationId);
+    }
+
+    private void viewAllParkingLots() {
+        System.out.println("\n🅿️  ALL PARKING LOTS");
+        System.out.println("====================");
+        
+        for (ParkingLot lot : parkingLots.values()) {
+            System.out.println(lot);
+            System.out.println("   Location: " + lot.getLocation().getAddress());
+            System.out.println("   Hours: " + (lot.isOpen24Hours() ? "24/7" : lot.getOpeningHours()));
+            System.out.printf("   Occupancy: %.1f%% (%d/%d spots)\n", 
+                            lot.getOccupancyRate(), 
+                            lot.getSpots().size() - lot.getAvailableCount(),
+                            lot.getSpots().size());
+            System.out.println();
+        }
+    }
+
+    private void registerNewUser() {
+        System.out.println("\n👤 REGISTER NEW USER");
+        System.out.println("====================");
+        
+        System.out.print("Enter User ID: ");
+        String userId = scanner.nextLine();
+        
+        if (users.containsKey(userId)) {
+            System.out.println("User ID already exists!");
+            return;
+        }
+        
+        System.out.print("Enter Name: ");
+        String name = scanner.nextLine();
+        
+        System.out.print("Enter Email: ");
+        String email = scanner.nextLine();
+        
+        System.out.print("Enter Phone Number: ");
+        String phone = scanner.nextLine();
+        
+        System.out.print("Enter Vehicle Number: ");
+        String vehicle = scanner.nextLine();
+        
+        User newUser = new User(userId, name, email, phone, vehicle);
+        
+        System.out.print("Preferred spot type (COMPACT/REGULAR/LARGE/HANDICAPPED/ELECTRIC) [REGULAR]: ");
+        String typeInput = scanner.nextLine();
+        if (!typeInput.isEmpty()) {
+            try {
+                newUser.setPreferredSpotType(SpotType.valueOf(typeInput.toUpperCase()));
+            } catch (IllegalArgumentException e) {
+                System.out.println("Invalid spot type, setting to REGULAR...");
+            }
+        }
+        
+        users.put(userId, newUser);
+        System.out.println("✅ User registered successfully!");
+        System.out.println("User ID: " + userId);
+    }
+
+    private void viewUserProfile() {
+        System.out.println("\n👤 VIEW USER PROFILE");
+        System.out.println("====================");
+        
+        System.out.print("Enter User ID: ");
+        String userId = scanner.nextLine();
+        
+        User user = users.get(userId);
+        if (user == null) {
+            System.out.println("User not found!");
+            return;
+        }
+        
+        System.out.println("\n📋 USER DETAILS:");
+        System.out.println("================");
+        System.out.println("Name: " + user.getName());
+        System.out.println("Email: " + user.getEmail());
+        System.out.println("Phone: " + user.getPhoneNumber());
+        System.out.println("Vehicle: " + user.getVehicleNumber());
+        System.out.println("Preferred Spot Type: " + user.getPreferredSpotType());
+        
+        System.out.println("\n📝 RESERVATION HISTORY:");
+        System.out.println("=======================");
+        if (user.getReservationHistory().isEmpty()) {
+            System.out.println("No reservations found.");
+        } else {
+            for (String resId : user.getReservationHistory()) {
+                Reservation res = reservations.get(resId);
+                if (res != null) {
+                    System.out.println(res);
+                    ParkingLot lot = parkingLots.get(res.getLotId());
+                    if (lot != null) {
+                        System.out.println("   Location: " + lot.getName());
+                    }
+                }
+            }
+        }
+        
+        System.out.println("\n🎫 ACTIVE RESERVATIONS:");
+        System.out.println("=======================");
+        List<Reservation> activeReservations = reservations.values().stream()
+            .filter(r -> r.getUserId().equals(userId) && r.isActive() && !r.isExpired())
+            .collect(Collectors.toList());
+            
+        if (activeReservations.isEmpty()) {
+            System.out.println("No active reservations.");
+        } else {
+            for (Reservation res : activeReservations) {
+                System.out.println(res);
+                ParkingLot lot = parkingLots.get(res.getLotId());
+                if (lot != null) {
+                    System.out.println("   Location: " + lot.getName());
+                }
+                System.out.printf("   Estimated Cost: ₹%.2f\n", res.getEstimatedCost());
+            }
+        }
+    }
+
+    // Utility methods for system administration
+    public void generateSystemReport() {
+        System.out.println("\n📊 PARKING SYSTEM REPORT");
+        System.out.println("=========================");
+        
+        int totalSpots = 0;
+        int totalAvailable = 0;
+        int totalOccupied = 0;
+        int totalReserved = 0;
+        int totalOutOfOrder = 0;
+        
+        for (ParkingLot lot : parkingLots.values()) {
+            totalSpots += lot.getSpots().size();
+            totalAvailable += lot.getAvailableCount();
+            
+            for (ParkingSpot spot : lot.getSpots()) {
+                switch (spot.getStatus()) {
+                    case OCCUPIED:
+                        totalOccupied++;
+                        break;
+                    case RESERVED:
+                        totalReserved++;
+                        break;
+                    case OUT_OF_ORDER:
+                        totalOutOfOrder++;
+                        break;
+                }
+            }
+        }
+        
+        System.out.println("Total Parking Lots: " + parkingLots.size());
+        System.out.println("Total Parking Spots: " + totalSpots);
+        System.out.println("Available: " + totalAvailable);
+        System.out.println("Occupied: " + totalOccupied);
+        System.out.println("Reserved: " + totalReserved);
+        System.out.println("Out of Order: " + totalOutOfOrder);
+        System.out.printf("System Occupancy: %.1f%%\n", 
+                        (double)(totalOccupied + totalReserved) / totalSpots * 100);
+        
+        System.out.println("\nRegistered Users: " + users.size());
+        System.out.println("Total Reservations: " + reservations.size());
+        
+        long activeReservations = reservations.values().stream()
+            .filter(r -> r.isActive() && !r.isExpired())
+            .count();
+        System.out.println("Active Reservations: " + activeReservations);
+        
+        System.out.println("\n📍 LOT-WISE BREAKDOWN:");
+        System.out.println("======================");
+        for (ParkingLot lot : parkingLots.values()) {
+            System.out.printf("%s: %d/%d spots (%.1f%% occupied)\n",
+                            lot.getName(),
+                            lot.getSpots().size() - lot.getAvailableCount(),
+                            lot.getSpots().size(),
+                            lot.getOccupancyRate());
+        }
+    }
+
+    // Method to simulate real-time updates
+    public void simulateRealTimeUpdates() {
+        System.out.println("\n🔄 SIMULATING REAL-TIME UPDATES");
+        System.out.println("===============================");
+        
+        Random random = new Random();
+        
+        // Simulate some spots being vacated
+        for (ParkingLot lot : parkingLots.values()) {
+            for (ParkingSpot spot : lot.getSpots()) {
+                if (spot.getStatus() == SpotStatus.OCCUPIED && random.nextDouble() < 0.1) {
+                    spot.vacate();
+                    System.out.println("✅ Spot " + spot.getSpotId() + " in " + lot.getName() + " is now available");
+                }
+            }
+        }
+        
+        // Simulate some available spots being occupied
+        for (ParkingLot lot : parkingLots.values()) {
+            List<ParkingSpot> available = lot.getAvailableSpots();
+            for (ParkingSpot spot : available) {
+                if (random.nextDouble() < 0.05) {
+                    spot.occupy();
+                    System.out.println("🚗 Spot " + spot.getSpotId() + " in " + lot.getName() + " is now occupied");
+                }
+            }
+        }
+        
+        // Check for expired reservations
+        for (Reservation reservation : reservations.values()) {
+            if (reservation.isActive() && reservation.isExpired()) {
+                ParkingLot lot = parkingLots.get(reservation.getLotId());
+                ParkingSpot spot = lot.findSpotById(reservation.getSpotId());
+                spot.vacate();
+                reservation.cancel();
+                System.out.println("⏰ Reservation " + reservation.getReservationId() + " expired and cancelled");
+            }
+        }
+    }
+
+    public static void main(String[] args) {
+        ParkingLocatorSystem system = new ParkingLocatorSystem();
+        
+        System.out.println("🚗 PARKING LOCATOR SYSTEM DEMO 🚗");
+        System.out.println("==================================");
+        
+        // Demo: Search for parking
+        System.out.println("\n1️⃣  DEMO: Searching for parking near MG Road");
+        Location userLocation = new Location(12.9716, 77.5946, "MG Road, Bangalore");
+        SearchFilter filter = new SearchFilter();
+        filter.setMaxDistance(10.0);
+        filter.setSpotType(SpotType.REGULAR);
+        
+        List<ParkingLot> results = system.searchParkingLots(userLocation, filter);
+        System.out.println("Found " + results.size() + " parking lots:");
+        for (ParkingLot lot : results) {
+            double distance = userLocation.distanceTo(lot.getLocation());
+            System.out.printf("- %s (%.2f km away, %d spots available)\n", 
+                            lot.getName(), distance, lot.getAvailableCount());
+        }
+        
+        // Demo: Make a reservation
+        System.out.println("\n2️⃣  DEMO: Making a reservation");
+        if (!results.isEmpty()) {
+            ParkingLot firstLot = results.get(0);
+            List<ParkingSpot> availableSpots = firstLot.getAvailableSpots();
+            if (!availableSpots.isEmpty()) {
+                ParkingSpot firstSpot = availableSpots.get(0);
+                Reservation reservation = system.makeReservation("USER001", firstLot.getLotId(), firstSpot.getSpotId());
+                if (reservation != null) {
+                    System.out.println("Reservation details: " + reservation);
+                }
+            }
+        }
+        
+        // Demo: System report
+        System.out.println("\n3️⃣  DEMO: System Report");
+        system.generateSystemReport();
+        
+        // Demo: Real-time updates
+        System.out.println("\n4️⃣  DEMO: Real-time Updates");
+        system.simulateRealTimeUpdates();
+        
+        // Start interactive system
+        System.out.println("\n🎮 Starting Interactive System...");
+        system.runInteractiveSystem();
+    }
+}
